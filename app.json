@@ -1,0 +1,10 @@
+{
+  "name": "Rhynoapp",
+  "displayName": "Rhynoapp",
+  "plugins": [
+    "expo-web-browser"
+  ],
+  "android": {
+    "package": "com.anonymous.rhynoapp"
+  }
+}

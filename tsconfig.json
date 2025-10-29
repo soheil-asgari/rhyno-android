@@ -1,0 +1,20 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    // Add or ensure 'jsx' is set correctly
+    "jsx": "react-native",
+    // Keep the 'lib' setting we added earlier
+    "lib": [
+      "esnext",
+      "dom"
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/Pods"
+  ]
+}
