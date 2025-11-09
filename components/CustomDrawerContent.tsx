@@ -1,10 +1,10 @@
 // components/CustomDrawerContent.tsx
-import React from 'react';
+import React, { useState } from 'react'; // ✅ [اصلاح] useState برای دکمه خروج اضافه شد
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import {
     DrawerContentScrollView,
-    DrawerItemList, // 👈 برای نمایش آیتم‌های موجود (تاریخچه و پنل)
-    DrawerItem,     // 👈 برای آیتم سفارشی "چت جدید"
+    DrawerItemList,
+    DrawerItem,
 } from '@react-navigation/drawer';
 import RNPickerSelect from 'react-native-picker-select';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -14,34 +14,56 @@ import type { DrawerNavigationType } from '../screens/Navigation';
 import { supabase } from '../lib/supabase';
 
 export function CustomDrawerContent(props: any) {
-    // ‼️ موقتی: این State باید سراسری شود (مثلاً با Context)
     const {
         selectedModel,
         setSelectedModel,
         availableModels,
         isLoadingModels,
         setCurrentChatId,
-        user // 👈 برای دکمه "چت جدید"
     } = useChat();
 
     const navigation = useNavigation<DrawerNavigationType>();
+
+    // استیت لودینگ برای دکمه خروج
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
     const handleNewChat = () => {
-        props.navigation.closeDrawer();
         setCurrentChatId(undefined);
+        // ✅ [اصلاح] اطمینان از ارسال پارامترهای صحیح
         navigation.navigate('Chat', { chatId: undefined });
         props.navigation.closeDrawer();
-
     };
+
+    // ✅✅✅ [اصلاح خطای ۱] حل مشکل سایدبار
+    const handleModelChange = (value: string | null) => {
+        if (!value) return;
+
+        // ۱. مدل را تنظیم کن
+        setSelectedModel(value);
+
+        // ۲. به صفحه چت برو
+        // ✅ [اصلاح] ارسال پارامترهای صحیح (مانند handleNewChat)
+        navigation.navigate('Chat', { chatId: undefined });
+
+        // ۳. سایدبار را ببند
+        props.navigation.closeDrawer();
+    };
+
+    // [اصلاح خطای ۲] حل مشکل دوبار کلیک خروج
     const handleLogout = async () => {
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
+
         const { error } = await supabase.auth.signOut();
         if (error) {
             alert("خطا در خروج");
+            setIsLoggingOut(false);
         } else {
-            // آپشنال: کاربر را به صفحه لاگین هدایت کنید اگر دارید
-            // navigation.navigate('Login'); 
-            props.navigation.closeDrawer(); // بستن منو
+            props.navigation.closeDrawer();
+            // (نیازی به false کردن نیست چون کامپوننت unmount می‌شود)
         }
     };
+
     return (
         <DrawerContentScrollView {...props} style={{ backgroundColor: '#111' }}>
             <View style={styles.drawerContainer}>
@@ -58,47 +80,56 @@ export function CustomDrawerContent(props: any) {
                 {/* ۲. انتخاب مدل */}
                 <View style={styles.modelSelectorContainer}>
                     <Text style={styles.modelLabel}>انتخاب مدل</Text>
-                    {/* 👇 ۳. نمایش لودینگ یا Picker */}
                     {isLoadingModels ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
                         <RNPickerSelect
                             value={selectedModel}
-                            onValueChange={(value) => value && setSelectedModel(value)} // 👈 آپدیت Context
+                            onValueChange={handleModelChange}
                             items={availableModels}
                             placeholder={{}}
                             style={pickerSelectStyles}
-                        // ... (بقیه props) ...
                         />
                     )}
                 </View>
 
                 {/* ۳. تاریخچه چت و پنل کاربری */}
-                {/* DrawerItemList به طور خودکار "ChatList" و "Settings" را رندر می‌کند */}
                 <DrawerItemList {...props} />
                 <View style={styles.separator} />
                 <DrawerItem
+                    // ✅✅✅ [اصلاح خطای ۲] استایل دکمه خروج
                     label="خروج"
-                    labelStyle={styles.logoutLabel} // استایل متفاوت برای خروج
+                    labelStyle={[
+                        styles.logoutLabel,
+                        isLoggingOut && { color: '#888' } // استایل خاکستری هنگام لودینگ
+                    ]}
                     icon={({ color, size }) => (
-                        <Icon name="log-out-outline" color={'#FF3B30'} size={size} /> // قرمز
+                        <Icon
+                            name="log-out-outline"
+                            color={isLoggingOut ? '#888' : '#FF3B30'} // آیکون خاکستری هنگام لودینگ
+                            size={size}
+                        />
                     )}
                     onPress={handleLogout}
+                // ✅ [اصلاح] پراپرتی 'disabled' حذف شد چون وجود ندارد
                 />
             </View>
         </DrawerContentScrollView>
     );
 }
-
-// استایل‌های منوی سفارشی
+const FONT_REGULAR = 'Vazirmatn-Medium';
+// ... (استایل‌ها بدون تغییر باقی می‌مانند)
 const styles = StyleSheet.create({
+    // ... (کد شما)
     drawerContainer: {
         flex: 1,
         paddingTop: 10,
+        
     },
     drawerLabel: {
         color: '#fff',
         fontWeight: '600',
+        fontFamily: FONT_REGULAR,
     },
     modelSelectorContainer: {
         paddingHorizontal: 15,
@@ -107,11 +138,13 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderColor: '#333',
         paddingVertical: 15,
+        fontFamily: FONT_REGULAR,
     },
     modelLabel: {
         color: '#aaa',
         fontSize: 12,
         marginBottom: 10,
+        fontFamily: FONT_REGULAR,
     },
     separator: {
         height: 1,
@@ -121,16 +154,18 @@ const styles = StyleSheet.create({
     logoutLabel: {
         color: '#FF3B30', // قرمز
         fontWeight: '600',
+        fontFamily: FONT_REGULAR,
     },
 });
 
-// استایل‌های Picker
 const pickerSelectStyles = StyleSheet.create({
+    // ... (کد شما)
     inputIOS: {
         fontSize: 16,
         fontWeight: '600',
         color: 'white',
         paddingRight: 20,
+        
     },
     inputAndroid: {
         fontSize: 16,

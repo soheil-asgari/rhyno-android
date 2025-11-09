@@ -11,7 +11,7 @@ interface ChatHeaderProps {
     onOptionsPress: () => void;
 }
 
-export default function ChatHeader({
+export default React.memo(function ChatHeader({
     onMenuPress,
     onNewChatPress,
     onOptionsPress,
@@ -48,8 +48,8 @@ export default function ChatHeader({
             </View>
         </View>
     );
-}
 
+});
 const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',

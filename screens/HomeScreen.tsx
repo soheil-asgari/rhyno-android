@@ -22,6 +22,8 @@ export default function HomeScreen() {
         </SafeAreaView>
     );
 }
+const FONT_REGULAR = 'Vazirmatn-Medium';
+const FONT_BOLD = 'Vazirmatn-Bold';
 
 const styles = StyleSheet.create({
     container: {
@@ -39,5 +41,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         textAlign: 'center',
         marginBottom: 20,
+        fontFamily: FONT_REGULAR,
     },
 });

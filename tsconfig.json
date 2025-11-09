@@ -1,6 +1,8 @@
 {
   "extends": "@react-native/typescript-config",
   "compilerOptions": {
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     // Add or ensure 'jsx' is set correctly
     "jsx": "react-native",
     // Keep the 'lib' setting we added earlier
@@ -11,7 +13,8 @@
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "types.d.ts"
   ],
   "exclude": [
     "**/node_modules",

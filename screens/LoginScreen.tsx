@@ -13,12 +13,14 @@ import {
 } from 'react-native';
 import { supabase } from '../lib/supabase'; // ما هنوز برای setSession به این نیاز داریم
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+// import * as Linking from 'expo-linking';
 import Icon from 'react-native-vector-icons/AntDesign'
+import Toast from 'react-native-toast-message';
+
 
 // آدرس بک‌اند Next.js خود را اینجا وارد کنید
 const YOUR_BACKEND_URL = 'https://www.rhynoai.ir'; // <--- موقتاً http
-
+const REDIRECT_SCHEME = 'rhynoapp://';
 
 
 export default function LoginScreen() {
@@ -27,15 +29,17 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [otpSent, setOtpSent] = useState(false);
+    const [error, setError] = useState('');
+
 
     // تابع ارسال OTP (بر اساس PhoneLoginBox.tsx)
     async function sendOtp() {
         if (!phone) {
-            Alert.alert('خطا', 'لطفاً شماره موبایل را وارد کنید.');
+            setError('لطفاً شماره موبایل را وارد کنید.');
             return;
         }
         setLoading(true);
-
+        setError('');
         try {
             // این API باید همان API در پروژه Next.js شما باشد
             // (این منطق را از 'PhoneLoginBox.tsx' شما گرفتم)
@@ -48,13 +52,13 @@ export default function LoginScreen() {
             const data = await res.json();
 
             if (data.success) {
-                Alert.alert('موفق', 'کد تایید به شماره شما ارسال شد.');
+                Toast.show({ type: 'success', text1: 'کد ارسال  شد' });
                 setOtpSent(true);
             } else {
                 throw new Error(data.message || 'خطا در ارسال کد');
             }
         } catch (error: any) {
-            Alert.alert('خطا', error.message);
+            setError(error.message);
             console.error('خطا در ارسال کد:', error);
         }
         setLoading(false);
@@ -63,10 +67,11 @@ export default function LoginScreen() {
     // تابع تایید OTP (با نیاز به تغییر در بک‌اند)
     async function verifyOtp() {
         if (!token) {
-            Alert.alert('خطا', 'لطفاً کد تایید را وارد کنید.');
+            Toast.show({ type: 'success', text1: 'کدتایید را وارد کنید' });
             return;
         }
         setLoading(true);
+        setError('');
 
         try {
             // **نکته مهم:** این API باید تغییر کند تا session را برگرداند
@@ -96,13 +101,13 @@ export default function LoginScreen() {
                 throw new Error(data.message || 'کد تایید نادرست است');
             }
         } catch (error: any) {
-            Alert.alert('خطا', error.message);
+            setError(error.message);
             console.error('خطا در تایید کد:', error);
         }
         setLoading(false);
     }
     const handleGoogleSignIn = async () => {
-        const REDIRECT_SCHEME = Linking.createURL('/');
+
         setGoogleLoading(true);
         try {
             const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -157,51 +162,65 @@ export default function LoginScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.innerContainer}>
+                {/* می‌توانید لوگوی خود را اینجا اضافه کنید */}
+                {/* <Image source={require('../assets/logo.png')} style={styles.logo} /> */}
                 <Text style={styles.header}>ورود به راینو</Text>
 
                 {/* --- بخش ورود با شماره موبایل --- */}
                 {!otpSent ? (
                     <>
-                        {/* ... TextInput شماره موبایل ... */}
                         <TextInput
                             style={styles.input}
-                            onChangeText={setPhone}
+                            onChangeText={(t) => { setPhone(t); setError(''); }} // <-- پاک کردن خطا هنگام تایپ
                             value={phone}
                             placeholder="شماره موبایل (مثال: 0912...)"
                             keyboardType="phone-pad"
                             autoCapitalize="none"
                             placeholderTextColor="#888"
                         />
-                        <View style={styles.buttonContainer}>
-                            <Button
-                                title={loading ? 'در حال ارسال...' : 'ارسال کد تایید'}
-                                disabled={loading || googleLoading}
-                                onPress={sendOtp}
-                                color="#0A84FF" // رنگ آبی
-                            />
-                        </View>
+                        <TouchableOpacity
+                            style={[styles.button, styles.primaryButton, (loading || googleLoading) && styles.buttonDisabled]}
+                            onPress={sendOtp}
+                            disabled={loading || googleLoading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.buttonText}>
+                                    {loading ? 'در حال ارسال...' : 'ارسال کد تایید'}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
                     </>
                 ) : (
                     <>
-                        {/* ... TextInput کد تایید ... */}
                         <TextInput
                             style={styles.input}
-                            onChangeText={setToken}
+                            onChangeText={(t) => { setToken(t); setError(''); }} // <-- پاک کردن خطا هنگام تایپ
                             value={token}
                             placeholder="کد تایید ۶ رقمی"
                             keyboardType="number-pad"
                             placeholderTextColor="#888"
                         />
-                        <View style={styles.buttonContainer}>
-                            <Button
-                                title={loading ? 'در حال بررسی...' : 'تایید و ورود'}
-                                disabled={loading || googleLoading}
-                                onPress={verifyOtp}
-                                color="#34C759" // رنگ سبز
-                            />
-                        </View>
+                        <TouchableOpacity
+                            style={[styles.button, styles.secondaryButton, (loading || googleLoading) && styles.buttonDisabled]}
+                            onPress={verifyOtp}
+                            disabled={loading || googleLoading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.buttonText}>
+                                    {loading ? 'در حال بررسی...' : 'تایید و ورود'}
+                                </Text>
+                            )}
+                        </TouchableOpacity>
                     </>
                 )}
+
+                {/* --- نمایش خطای داخلی --- */}
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
 
                 {/* --- جدا کننده --- */}
                 <View style={styles.separatorContainer}>
@@ -211,9 +230,8 @@ export default function LoginScreen() {
                 </View>
 
                 {/* --- دکمه ورود با گوگل --- */}
-                {/* 👇 ۳. استفاده از TouchableOpacity برای استایل بهتر */}
                 <TouchableOpacity
-                    style={[styles.googleButton, (loading || googleLoading) && styles.buttonDisabled]}
+                    style={[styles.button, styles.googleButton, (loading || googleLoading) && styles.buttonDisabled]}
                     onPress={handleGoogleSignIn}
                     disabled={loading || googleLoading}
                 >
@@ -222,7 +240,7 @@ export default function LoginScreen() {
                     ) : (
                         <>
                             <Icon name="google" size={20} color="#fff" style={styles.googleIcon} />
-                            <Text style={styles.googleButtonText}>ورود با گوگل</Text>
+                            <Text style={styles.buttonText}>ورود با گوگل</Text>
                         </>
                     )}
                 </TouchableOpacity>
@@ -231,17 +249,20 @@ export default function LoginScreen() {
         </SafeAreaView>
     );
 }
-
+const FONT_REGULAR = 'Vazirmatn-Medium';
+const FONT_BOLD = 'Vazirmatn-Bold';
 // ... (استایل‌ها را از قدم قبلی کپی کنید)
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#000', // پس‌زمینه مشکی
+        fontFamily: FONT_REGULAR,
     },
     innerContainer: {
         flex: 1,
         justifyContent: 'center',
         padding: 20,
+        fontFamily: FONT_REGULAR,
     },
     header: {
         fontSize: 28,
@@ -249,6 +270,7 @@ const styles = StyleSheet.create({
         color: '#fff',
         textAlign: 'center',
         marginBottom: 40,
+        fontFamily: FONT_REGULAR,
     },
     input: {
         height: 55, // کمی بلندتر
@@ -261,6 +283,7 @@ const styles = StyleSheet.create({
         color: '#fff',
         textAlign: Platform.OS === 'ios' ? 'right' : 'right',
         fontSize: 16,
+        fontFamily: FONT_REGULAR,
     },
     buttonContainer: { // برای فاصله و گرد کردن دکمه‌های پیش‌فرض
         marginVertical: 10,
@@ -281,6 +304,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 10,
         color: '#888',
         fontSize: 14,
+        fontFamily: FONT_REGULAR,
     },
     // دکمه گوگل
     googleButton: {
@@ -291,6 +315,7 @@ const styles = StyleSheet.create({
         paddingVertical: 15, // بلندتر
         borderRadius: 10,
         marginTop: 10,
+        fontFamily: FONT_REGULAR,
     },
     googleIcon: {
         marginRight: 10,
@@ -299,8 +324,38 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
+        fontFamily: FONT_REGULAR,
     },
     buttonDisabled: { // استایل دکمه غیرفعال
         opacity: 0.6,
+    },
+    errorText: {
+        color: '#FF3B30', // رنگ قرمز خطا
+        textAlign: 'center',
+        marginTop: 15,
+        fontSize: 14,
+        fontFamily: FONT_REGULAR,
+    },
+    button: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 15,
+        borderRadius: 10,
+        marginTop: 10,
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+        fontFamily: FONT_REGULAR,
+    },
+    primaryButton: {
+        backgroundColor: '#0A84FF',
+        fontFamily: FONT_REGULAR, // آبی
+    },
+    secondaryButton: {
+        backgroundColor: '#34C759', // سبز
+        fontFamily: FONT_REGULAR,
     },
 });

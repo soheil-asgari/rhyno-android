@@ -1,7 +1,7 @@
 // ✅ RhynoApp/index.js
-import 'react-native-gesture-handler'; // <-- باید اولین خط باشد
+import 'react-native-gesture-handler';
 import { AppRegistry } from 'react-native';
 import App from './App';
-import { name as appName } from './app.json';
+// خط app.json حذف شد
 
-AppRegistry.registerComponent(appName, () => App);
+AppRegistry.registerComponent("main", () => App); // 👈 تغییر اینجاست

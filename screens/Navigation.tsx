@@ -4,8 +4,7 @@ import * as React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import ChatScreen from './ChatScreen'; // مسیر درست فایل‌ها رو چک کنید
 import SettingsScreen from './SettingsScreen'; // فرض می‌کنیم این رو هم در screens دارید
-import ChatListScreen from './ChatListScreen'; // ✅ ایمپورت جدید
-import { Text, View } from 'react-native';
+import ChatListScreen from './ChatListScreen';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { NavigatorScreenParams } from '@react-navigation/native'
 import { CustomDrawerContent } from '../components/CustomDrawerContent';
