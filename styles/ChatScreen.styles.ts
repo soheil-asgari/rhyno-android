@@ -8,7 +8,7 @@ export const styles = StyleSheet.create({
 
     container: {
         flex: 1,
-        backgroundColor: '#000000',
+        backgroundColor: 'transparent',
     },
     messageList: {
         flex: 1,
@@ -45,8 +45,8 @@ export const styles = StyleSheet.create({
         paddingTop: 40, // ✅ کمی فاصله از بالا
     },
     welcomeLogo: {
-        width: 100,
-        height: 100,
+        width: 150,
+        height: 150,
         borderRadius: 16, // (اختیاری)
         marginBottom: 24,
     },

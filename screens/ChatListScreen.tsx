@@ -13,13 +13,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native'; // ✅ useFocusEffect اضافه شد
-import type { DrawerNavigationType } from './Navigation';
+import type { DrawerNavigationType } from '../types/navigation.types';
 import { supabase } from '../lib/supabase'; // ✅ ایمپورت supabase
 import { Session, User } from '@supabase/supabase-js'; // ✅ ایمپورت تایپ‌ها
 import { useChat } from '../context/ChatContext';
 import Icon from 'react-native-vector-icons/Ionicons';
-
-
+import { CommonActions } from '@react-navigation/native';
+import { useAndroidBackHandler } from './Navigation';
 
 // ✅ تعریف تایپ برای یک آیتم چت از دیتابیس (بر اساس جدول chats شما)
 interface Chat {
@@ -107,7 +107,10 @@ function formatTimestamp(timestamp: string | undefined | null): string {
 
 
 export default function ChatListScreen() {
+
+
     const navigation = useNavigation<DrawerNavigationType>();
+    useAndroidBackHandler(navigation);
     // 👇 ۲. گرفتن تابع setCurrentChatId و user از Context
     const { setCurrentChatId, user, currentChatId } = useChat();
 
@@ -202,14 +205,13 @@ export default function ChatListScreen() {
         navigation.closeDrawer();
     }, [navigation, setCurrentChatId]); // <-- وابستگی‌ها اضافه شد
 
-    const handleChatPress = useCallback((chatId: string, chatName: string) => {
-        console.log(`Opening chat: ${chatName} (ID: ${chatId})`);
-
+    const handleChatPress = (chatId: string) => {
+        // ✅ ۱. اول به Context بگویید کدام چت فعال است
         setCurrentChatId(chatId);
-        navigation.navigate('Chat', { chatId: chatId }); // <-- باگ اصلی اینجا رفع شد
 
-        navigation.closeDrawer();
-    }, [navigation, setCurrentChatId]);
+        // ✅ ۲. سپس به صفحه چت بروید
+        navigation.navigate('Chat', { chatId: chatId });
+    };
 
     if (loading) {
         return (
@@ -238,7 +240,7 @@ export default function ChatListScreen() {
                                     styles.chatItem,
                                     isActive && styles.chatItemActive
                                 ]}
-                                onPress={() => handleChatPress(item.id, item.name)}
+                                onPress={() => handleChatPress(item.id)}
                             >
                                 <View style={styles.chatItemContent}>
                                     <View style={styles.chatTextContainer}>

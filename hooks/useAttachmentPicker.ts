@@ -1,51 +1,59 @@
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-// ❌ ایمپورت‌های Supabase و User از اینجا حذف شدند چون دیگر لازم نیستند
-import { IMessage } from 'react-native-gifted-chat';
-import Toast from 'react-native-toast-message';
 import { DocumentPickerAsset } from 'expo-document-picker';
+// 💡 این کتابخانه را برای نمایش منوی زیبا اضافه می‌کنیم
+import { useActionSheet } from '@expo/react-native-action-sheet';
 
-const YOUR_BACKEND_URL = 'https://www.rhynoai.ir';
-
+// رابط (Interface) را کمی تغییر می‌دهیم تا خواناتر باشد
 interface UseAttachmentPickerProps {
-    setStagedImage: React.Dispatch<React.SetStateAction<string | null>>;
-    setStagedFile: (asset: DocumentPickerAsset | null) => void;
+    // به جای SetState، توابع callback تمیزتری داریم
+    onImageSelect: (uri: string | null) => void;
+    onFileSelect: (asset: DocumentPickerAsset | null) => void;
 }
 
 export const useAttachmentPicker = ({
-    setStagedImage,
-    setStagedFile
+    onImageSelect,
+    onFileSelect
 }: UseAttachmentPickerProps) => {
 
-    // --- منطق انتخاب عکس (اصلاح شد) ---
-    const handleImagePick = useCallback(async () => {
-        // ❌ خط زیر حذف شد چون 'user' دیگر در این فایل وجود ندارد
-        // if (!user) return; 
+    // 💡 هوک اصلی برای نمایش ActionSheet
+    const { showActionSheetWithOptions } = useActionSheet();
 
+    // --- 1. منطق انتخاب عکس (بهینه‌شده با URI) ---
+    const handleImagePick = useCallback(async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
             Alert.alert('خطا', 'برای انتخاب عکس به اجازه دسترسی به گالری نیاز داریم.');
             return;
         }
+
         let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
+            // ✅ استفاده از سینتکس مدرن
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: false,
             quality: 0.8,
-            base64: true,
+            // ❌ دیگر نیازی به Base64 نداریم (بهبود عملکرد)
+            // base64: false, 
         });
-        if (result.canceled || !result.assets || !result.assets[0].base64) {
+
+        if (result.canceled || !result.assets) {
+            // onImageSelect(null); // اگر بخواهیم در صورت لغو، قبلی را پاک کنیم
             return;
         }
+
         const asset = result.assets[0];
-        const base64Uri = `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`;
-        setStagedImage(base64Uri);
 
-    }, [setStagedImage]); // ❌ 'user' از وابستگی‌ها (dependency array) هم حذف شد
+        // ✅ پاک کردن فایل، در صورت وجود، قبل از تنظیم عکس جدید
+        onFileSelect(null);
+        // ✅ ارسال URI به جای رشته‌ی سنگین Base64
+        onImageSelect(asset.uri);
+
+    }, [onImageSelect, onFileSelect]);
 
 
-    // --- منطق انتخاب فایل (این درست است) ---
+    // --- 2. منطق انتخاب فایل (بهبود یافته) ---
     const handleFilePick = useCallback(async () => {
         let docResult: DocumentPicker.DocumentPickerResult;
         try {
@@ -55,7 +63,12 @@ export const useAttachmentPicker = ({
                     "text/plain",
                     "text/markdown",
                     "application/json",
-                    "text/csv"
+                    "text/csv",
+                    // می‌توانید موارد بیشتری مثل فایل‌های آفیس اضافه کنید
+                    "application/msword", // .doc
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+                    "application/vnd.ms-excel", // .xls
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
                 ],
             });
         } catch (e: any) {
@@ -65,29 +78,81 @@ export const useAttachmentPicker = ({
         }
 
         if (docResult.canceled || !docResult.assets) {
-            setStagedFile(null); // ✅ اطمینان از نال کردن در صورت لغو
+            // onFileSelect(null); // اگر بخواهیم در صورت لغو، قبلی را پاک کنیم
             return;
         }
 
-        setStagedFile(docResult.assets[0]);
+        // ✅ پاک کردن عکس، در صورت وجود، قبل از تنظیم فایل جدید
+        onImageSelect(null);
+        onFileSelect(docResult.assets[0]);
 
-    }, [setStagedFile]);
+    }, [onFileSelect, onImageSelect]);
 
 
-    // --- تابع اصلی که منو را نشان می‌دهد (بدون تغییر) ---
+    // --- 3. تابع اصلی (بازنویسی شده با ActionSheet) ---
     const handleAttachPress = () => {
-        Alert.alert(
-            "ارسال فایل",
-            "چه فایلی می‌خواهید ارسال کنید؟",
-            [
-                { text: "📸 ضمیمه عکس (برای چت)", onPress: handleImagePick },
-                { text: "📄 ضمیمه فایل (برای پردازش)", onPress: handleFilePick }, // ✅ متن اصلاح شد
-                {
-                    text: "🎙️ ضبط صدا (به زودی)",
-                    onPress: () => Alert.alert("به زودی", "این قابلیت در حال ساخت است.")
+        // گزینه‌های منو
+        const options = [
+            '📸 ضمیمه عکس',
+            '📄 ضمیمه فایل',
+            '🎙️ ضبط صدا (به زودی)',
+            'لغو' // دکمه لغو
+        ];
+        const destructiveButtonIndex = undefined;
+        const cancelButtonIndex = 3; // ایندکس دکمه "لغو"
+
+        showActionSheetWithOptions(
+            {
+                options,
+                cancelButtonIndex,
+                destructiveButtonIndex,
+                title: "ارسال فایل",
+                message: "چه فایلی می‌خواهید ارسال کنید؟",
+
+                // ✅ استایل‌دهی برای وسط چین کردن و بهبود ظاهر
+                textStyle: {
+                    textAlign: 'center', // وسط چین کردن متن هر گزینه
+                    // fontWeight: 'bold', // اگر می‌خواهید متن‌ها پررنگ باشند
                 },
-                { text: "لغو", style: "cancel" }
-            ]
+                titleTextStyle: {
+                    textAlign: 'center', // وسط چین کردن عنوان
+                    fontWeight: 'bold',
+                    fontSize: 18,
+                },
+                messageTextStyle: {
+                    textAlign: 'center', // وسط چین کردن پیام
+                    fontSize: 14,
+                    color: '#666', // رنگ خاکستری برای متن توضیحات
+                },
+                containerStyle: {
+                    // این برای استایل کلی ActionSheet است
+                    // مثلاً می‌توانید borderRadius اضافه کنید
+                    borderRadius: 15,
+                    overflow: 'hidden', // مهم برای borderRadius
+                },
+            },
+            (selectedIndex?: number) => {
+                // بررسی دکمه‌ای که کاربر انتخاب کرده
+                switch (selectedIndex) {
+                    case 0:
+                        // ضمیمه عکس
+                        handleImagePick();
+                        break;
+                    case 1:
+                        // ضمیمه فایل
+                        handleFilePick();
+                        break;
+                    case 2:
+                        // ضبط صدا
+                        Alert.alert("به زودی", "این قابلیت در حال ساخت است.");
+                        break;
+
+                    case cancelButtonIndex:
+                    // لغو (کاری انجام نمی‌دهد)
+                    default:
+                        break;
+                }
+            }
         );
     };
 

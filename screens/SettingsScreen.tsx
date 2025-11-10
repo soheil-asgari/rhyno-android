@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Button,
     Alert,
+    TouchableOpacity,
     Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,7 +18,7 @@ import { Tables } from '../supabase/types';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import { useNavigation } from '@react-navigation/native';
 
 
 const MANUAL_EXCHANGE_RATE = 1030000;
@@ -223,7 +224,11 @@ export default function SettingsScreen() {
     const { user, isLoadingAuth, session } = useChat(); // گرفتن کاربر از Context
     const [wallet, setWallet] = useState<Wallet | null>(null);
     const [isLoadingWallet, setIsLoadingWallet] = useState(true);
-
+    const navigation = useNavigation<any>();
+    const handleNavigateToPayment = () => {
+        // 'CustomPayment' اسمی است که در مرحله بعد به صفحه پرداخت می‌دهیم
+        navigation.navigate('CustomPayment');
+    };
     // افکت برای گرفتن موجودی کیف پول
     useEffect(() => {
         const fetchWallet = async () => {
@@ -297,7 +302,13 @@ export default function SettingsScreen() {
                         <Text style={styles.balanceUnit}> تومان</Text>
                     </Text>
                 </LinearGradient>
-
+                <TouchableOpacity
+                    style={styles.chargeButton}
+                    onPress={handleNavigateToPayment}
+                >
+                    <Icon name="add-circle-outline" size={22} color="#fff" />
+                    <Text style={styles.chargeButtonText}>شارژ حساب</Text>
+                </TouchableOpacity>
                 {/* ۲. کارت اطلاعات کاربر */}
                 <View style={styles.card}>
                     {/* ✅ بهبود چینش عنوان */}
@@ -560,5 +571,24 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 13,
         fontFamily: FONT_REGULAR,
+    },
+    chargeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#012146ff', // استفاده از رنگ آبی اصلی
+        paddingVertical: 20,
+        borderRadius: 12,
+        marginHorizontal: 10, // کمی کوچکتر از کارت اصلی
+        marginTop: 5, // برای اینکه کمی زیر کارت بالایی برود
+        zIndex: -1, // اطمینان از اینکه زیر سایه کارت بالایی است
+        paddingTop: 18, // چون 10 پیکسل بالا رفته، پدینگ را بیشتر می‌کنیم
+        marginBottom: 15, // فاصله از کارت پایینی
+    },
+    chargeButtonText: {
+        color: '#fff',
+        fontSize: 20,
+        fontFamily: FONT_BOLD,
+        marginLeft: 8,
     },
 });

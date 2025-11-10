@@ -1,7 +1,7 @@
 // App.tsx
 import 'react-native-url-polyfill/auto';
 import { registerGlobals } from '@livekit/react-native-webrtc';
-import React from 'react'; // ❌ useEffect رو حذف کنید
+import React from 'react'; // ✅ useEffect حذف شد (استفاده نمی‌شد)
 import { NavigationContainer } from '@react-navigation/native';
 import AppNavigation from './screens/Navigation';
 import LoginScreen from './screens/LoginScreen';
@@ -10,18 +10,21 @@ import {
   View,
   Text,
   ActivityIndicator,
-  StyleSheet, // ❌ StyleSheet دیگه لازم نیست (مگر اینکه جای دیگه استفاده کنید)
+  StyleSheet, // (این می‌ماند چون styles.loadingContainer استفاده می‌شود)
   TextInput,
-  Platform
+  // Platform, // ❌ حذف شد (استفاده نمی‌شد)
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import Toast from 'react-native-toast-message';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet'; // ✅ برای منوی گزینه‌ها لازم است
+import LottieView from 'lottie-react-native';
+
 
 // --- فونت‌ها ---
 const FONT_REGULAR = 'Vazirmatn-Medium';
-const FONT_BOLD = 'Vazirmatn-Bold'; // <-- این رو نگه دارید، لازمش داریم
+const FONT_BOLD = 'Vazirmatn-Bold';
 
-// --- تنظیمات پیش‌فرض (اینا درستن و می‌مونن) ---
+// --- تنظیمات پیش‌فرض (Global Font Settings) ---
 // @ts-ignore
 if (Text.defaultProps == null) Text.defaultProps = {};
 // @ts-ignore
@@ -45,16 +48,31 @@ TextInput.defaultProps.allowFontScaling = false;
 registerGlobals();
 WebBrowser.maybeCompleteAuthSession();
 
+/**
+ * این کامپوننت روت اصلی ناوبری است
+ * و بر اساس وضعیت لاگین، کاربر را به LoginScreen یا AppNavigation می‌فرستد
+ */
 function RootNavigator() {
-  // ... (کد این بخش دست نخوره)
+
   const { user, isLoadingAuth } = useChat();
+
+  // نمایش لودینگ تا زمانی که وضعیت لاگین مشخص شود
   if (isLoadingAuth) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#fff" />
+        {/* به جای ActivityIndicator از Lottie استفاده می‌کنیم */}
+        <LottieView
+          source={require('./assets/loading.json')} // 3. آدرس فایل انیمیشن
+          autoPlay // اتوماتیک پخش شود
+          loop // به صورت تکرارشونده پخش شود
+          style={{ width: 200, height: 200 }} // 4. اندازه دلخواه خود را بدهید
+        />
+        {/* می‌توانید یک متن "در حال بارگذاری..." هم زیر انیمیشن اضافه کنید */}
+        <Text style={{ color: '#fff', marginTop: 20 }}>در حال بارگذاری...</Text>
       </View>
     );
   }
+
   return (
     <NavigationContainer>
       {user ? <AppNavigation /> : <LoginScreen />}
@@ -62,33 +80,25 @@ function RootNavigator() {
   );
 }
 
-
-// --- ❌❌❌ کل این بخش‌ها باید حذف بشن ❌❌❌ ---
-// let hasPatchedTextRender = false;
-// 
-// export default function App() {
-//   useEffect(() => {
-//     if (!hasPatchedTextRender) {
-//       // ... کل کد پچ ...
-//     }
-//   }, []);
-// ...
-// }
-// --- ❌❌❌ تا اینجا حذف شود ❌❌❌ ---
-
-
-// ✅ این شکلی باید بشه:
+// ✅ ساختار نهایی و صحیح App
 export default function App() {
   return (
-    <>
-      <ChatProvider>
-        <RootNavigator />
-      </ChatProvider>
-      <Toast />
-    </>
+    // ActionSheetProvider کل برنامه را می‌پوشاند
+    <ActionSheetProvider>
+      {/* ما از یک Fragment <> استفاده می‌کنیم
+              تا ActionSheetProvider فقط یک فرزند ببیند
+            */}
+      <>
+        <ChatProvider>
+          <RootNavigator />
+        </ChatProvider>
+
+        {/* Toast برای نمایش پیام‌های سراسری */}
+        <Toast />
+      </>
+    </ActionSheetProvider>
   );
 }
-
 
 const styles = StyleSheet.create({
   loadingContainer: {

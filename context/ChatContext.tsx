@@ -1,12 +1,25 @@
 // context/ChatContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
+
+// ✅ تعریف یک نوع ساده برای چت
+interface Chat {
+    id: string;
+    name: string;
+    updated_at: string;
+    // ... هر فیلد دیگری که از جدول 'chats' نیاز دارید
+}
 
 interface ChatContextType {
     session: Session | null;
     user: User | null;
     isLoadingAuth: boolean;
+
+    // ✅ مدیریت لیست چت‌ها (برای سایدبار/تاریخچه)
+    chats: Chat[];
+    fetchChats: () => Promise<void>;
+    removeChatFromList: (chatId: string) => void;
 
     currentChatId: string | undefined;
     setCurrentChatId: (chatId: string | undefined) => void;
@@ -22,6 +35,8 @@ interface ChatContextType {
     workspaceId: string | null;
     defaultChatSettings: Record<string, any>;
     workspaceEmbeddingsProvider: string | null;
+
+    // ✅ مدیریت پیام‌های چت فعلی
     messages: any[];
     isLoadingMessages: boolean;
     fetchMessages: (chatId: string) => Promise<void>;
@@ -38,6 +53,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
+    const [chats, setChats] = useState<Chat[]>([]); // ✅ State جدید برای لیست چت‌ها
     const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
     const [workspaceEmbeddingsProvider, setWorkspaceEmbeddingsProvider] = useState<string | null>(null);
     const [availableModels, setAvailableModels] = useState<{ label: string; value: string }[]>([]);
@@ -52,67 +68,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [workspaceId, setWorkspaceId] = useState<string | null>(null);
     const [defaultChatSettings, setDefaultChatSettings] = useState<Record<string, any>>({});
-    // مثال GET workspace بر اساس userId
-    // واکشی workspace معتبر کاربر
-    const fetchUserWorkspace = async (userId: string) => {
-        try {
-            const response = await fetch(`https://www.rhynoai.ir/api/workspaces?userId=${userId}`);
-            if (!response.ok) throw new Error('Failed to fetch workspace');
-            const workspaces = await response.json();
-            console.log('Workspaces fetched:', workspaces);
 
-            if (!workspaces || workspaces.length === 0) return null;
-
-            const workspace = workspaces[0];
-            setWorkspaceEmbeddingsProvider(workspace.embeddings_provider || 'openai'); // مقدار پیش‌فرض openai
-            return workspace.id; // فقط id اولین workspace
-        } catch (err: any) {
-            console.error('Error fetching workspace:', err.message);
-            return null;
-        }
-    };
-
-
-
-    // بارگذاری workspaceId و chatSettings پیش‌فرض از API
-    useEffect(() => {
-        const fetchWorkspace = async () => {
-            if (!user?.id) return;
-            const wsId = await fetchUserWorkspace(user.id);
-            console.log("Workspace ID fetched:", wsId);
-            setWorkspaceId(wsId); // فقط id
-        };
-        fetchWorkspace();
-    }, [user]);
-
-
-
-    useEffect(() => {
-        if (!user) return;
-        const fetchWorkspaceAndSettings = async () => {
-            try {
-                setIsLoadingChatSettings(true);
-                // واکشی workspaceId
-                const wsRes = await fetch(`https://www.rhynoai.ir/api/workspaces?userId=${user.id}`);
-                const workspaces = await wsRes.json();
-                if (workspaces?.length > 0) {
-                    setWorkspaceId(workspaces[0].id); // اولین workspace کاربر
-                }
-
-                // واکشی chat settings پیش‌فرض
-                const settingsRes = await fetch('https://www.rhynoai.ir/api/chat-settings');
-                const settingsData = await settingsRes.json();
-                setChatSettings(settingsData);
-                setDefaultChatSettings(settingsData);
-            } catch (error) {
-                console.error("Error fetching workspace or chat settings:", error);
-            } finally {
-                setIsLoadingChatSettings(false);
-            }
-        };
-        fetchWorkspaceAndSettings();
-    }, [user]);
-
+    // --- توابع Auth (این بخش دست نخورده) ---
     useEffect(() => {
         const fetchSession = async () => {
             setIsLoadingAuth(true);
@@ -131,34 +88,33 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         return () => subscription.unsubscribe();
     }, []);
 
+    // --- توابع مربوط به لیست چت‌ها ---
 
-    // واکشی مدل‌ها
-    useEffect(() => {
-        const fetchModels = async () => {
-            setIsLoadingModels(true);
-            try {
-                const res = await fetch('https://www.rhynoai.ir/api/models');
-                if (!res.ok) throw new Error('Failed to fetch models');
-                const models = await res.json(); // [{label, value}, ...]
-                setAvailableModels(models);
+    // ✅ واکشی لیست چت‌ها (برای سایدبار)
+    const fetchChats = useCallback(async () => {
+        if (!user) return;
+        try {
+            const { data, error } = await supabase
+                .from('chats')
+                .select('id, name, updated_at') // فقط فیلدهای مورد نیاز
+                .eq('user_id', user.id)
+                .order('updated_at', { ascending: false });
 
-                // جداگانه MODEL_PROMPTS هم fetch کن
-                const promptsRes = await fetch('https://www.rhynoai.ir/api/prompt');
-                if (!promptsRes.ok) throw new Error('Failed to fetch prompts');
-                const promptsData = await promptsRes.json();
-                setModelPrompts(promptsData);
-                console.log(promptsData);
-            } catch (err) {
-                console.error(err);
-                setAvailableModels([{ label: 'gpt-4o (Fallback)', value: 'gpt-4o' }]);
-                setModelPrompts({});
-            } finally {
-                setIsLoadingModels(false);
-            }
-        };
-        fetchModels();
-    }, []);
-    const fetchMessages = async (chatId: string) => {
+            if (error) throw error;
+            setChats(data || []);
+        } catch (error) {
+            console.error("Error fetching chats:", error);
+        }
+    }, [user]); // وابسته به user
+
+    // ✅ حذف چت از State (برای آپدیت آنی UI)
+    const removeChatFromList = useCallback((chatId: string) => {
+        setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
+    }, []); // این تابع به هیچ stateی وابسته نیست
+
+    // --- توابع مربوط به پیام‌ها (همگی با useCallback) ---
+
+    const fetchMessages = useCallback(async (chatId: string) => {
         setIsLoadingMessages(true);
         try {
             const res = await fetch(`https://www.rhynoai.ir/api/message.server?chat_id=${chatId}`);
@@ -171,9 +127,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setIsLoadingMessages(false);
         }
-    };
+    }, []); // ✅ useCallback
 
-    const createMessage = async (message: any) => {
+    const createMessage = useCallback(async (message: any) => {
         const res = await fetch(`https://www.rhynoai.ir/api/message.server`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -183,9 +139,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         const data = await res.json();
         setMessages(prev => [...prev, data]);
         return data;
-    };
+    }, []); // ✅ useCallback
 
-    const updateMessage = async (messageId: string, message: any) => {
+    const updateMessage = useCallback(async (messageId: string, message: any) => {
         const res = await fetch(`https://www.rhynoai.ir/api/message.server`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -195,15 +151,15 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         const data = await res.json();
         setMessages(prev => prev.map(m => m.id === data.id ? data : m));
         return data;
-    };
+    }, []); // ✅ useCallback
 
-    const deleteMessage = async (messageId: string) => {
+    const deleteMessage = useCallback(async (messageId: string) => {
         const res = await fetch(`https://www.rhynoai.ir/api/message.server?id=${messageId}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete message');
         setMessages(prev => prev.filter(m => m.id !== messageId));
-    };
+    }, []); // ✅ useCallback
 
-    const deleteMessagesIncludingAndAfter = async (sequenceNumber: number) => {
+    const deleteMessagesIncludingAndAfter = useCallback(async (sequenceNumber: number) => {
         const res = await fetch(`https://www.rhynoai.ir/api/message.server/delete-sequence`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -211,12 +167,67 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         });
         if (!res.ok) throw new Error('Failed to delete messages');
         fetchMessages(currentChatId!);
-    };
+    }, [currentChatId, fetchMessages]); // ✅ useCallback
 
-    const value: ChatContextType = {
+    // --- افکت اصلی بارگذاری داده‌ها (ادغام شده و بهینه) ---
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const fetchInitialData = async () => {
+            try {
+                setIsLoadingChatSettings(true);
+                setIsLoadingModels(true);
+
+                // --- ۱. واکشی Workspace و Settings (ادغام شده) ---
+                const wsRes = await fetch(`https://www.rhynoai.ir/api/workspaces?userId=${user.id}`);
+                const workspaces = await wsRes.json();
+                if (workspaces?.length > 0) {
+                    const ws = workspaces[0];
+                    setWorkspaceId(ws.id);
+                    setWorkspaceEmbeddingsProvider(ws.embeddings_provider || 'openai');
+                }
+
+                const settingsRes = await fetch('https://www.rhynoai.ir/api/chat-settings');
+                const settingsData = await settingsRes.json();
+                setChatSettings(settingsData);
+                setDefaultChatSettings(settingsData);
+                setIsLoadingChatSettings(false);
+
+                // --- ۲. واکشی Models و Prompts ---
+                const modelsRes = await fetch('https://www.rhynoai.ir/api/models');
+                if (!modelsRes.ok) throw new Error('Failed to fetch models');
+                const models = await modelsRes.json();
+                setAvailableModels(models);
+
+                const promptsRes = await fetch('https://www.rhynoai.ir/api/prompt');
+                if (!promptsRes.ok) throw new Error('Failed to fetch prompts');
+                const promptsData = await promptsRes.json();
+                setModelPrompts(promptsData);
+                setIsLoadingModels(false);
+
+                // --- ۳. ✅ واکشی لیست چت‌ها ---
+                await fetchChats();
+
+            } catch (error) {
+                console.error("Error fetching initial data:", error);
+                // بازگرداندن به حالت پیش‌فرض در صورت خطا
+                setIsLoadingChatSettings(false);
+                setIsLoadingModels(false);
+                setAvailableModels([{ label: 'gpt-4o (Fallback)', value: 'gpt-4o' }]);
+            }
+        };
+
+        fetchInitialData();
+    }, [user, fetchChats]); // ✅ وابسته به user و تابع fetchChats (که خودش به user وابسته است)
+
+    // --- ارائه دهنده Context (با useMemo بهینه شده) ---
+    const value: ChatContextType = useMemo(() => ({
         session,
         user,
         isLoadingAuth,
+        chats, // ✅
+        fetchChats, // ✅
+        removeChatFromList, // ✅
         currentChatId,
         setCurrentChatId,
         selectedModel,
@@ -236,8 +247,32 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         fetchMessages,
         messages,
         isLoadingMessages,
-
-    };
+    }), [
+        // ✅ لیست وابستگی کامل (شامل توابع useCallback)
+        session,
+        user,
+        isLoadingAuth,
+        chats,
+        fetchChats,
+        removeChatFromList,
+        currentChatId,
+        selectedModel,
+        availableModels,
+        isLoadingModels,
+        chatSettings,
+        isLoadingChatSettings,
+        workspaceId,
+        defaultChatSettings,
+        workspaceEmbeddingsProvider,
+        modelPrompts,
+        deleteMessagesIncludingAndAfter,
+        deleteMessage,
+        updateMessage,
+        createMessage,
+        fetchMessages,
+        messages,
+        isLoadingMessages
+    ]);
 
     return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 };

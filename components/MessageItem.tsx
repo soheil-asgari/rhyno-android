@@ -13,7 +13,7 @@ import { markdownStyles } from '../styles/markdownStyles';
 import TypingIndicator from './TypingIndicator';
 import CopyableCodeBlock from './CopyableCodeBlock';
 import { AudioPlayer } from './AudioPlayer';
-
+import { LinearGradient } from 'expo-linear-gradient';
 
 // استایل‌های ثابت را به انتهای فایل منتقل کردیم
 import { messageItemStyles as styles } from '../styles/messageItemStyles';
@@ -137,72 +137,98 @@ const MessageItem = ({
     const handleEdit = () => onEditMessage(msg);
     const handleRegen = () => onRegenerate(index);
     const handleImagePress = () => finalImageUri && onOpenImage(finalImageUri);
+    const UserBubble = ({ children }: { children: React.ReactNode }) => (
+        <LinearGradient
+            colors={['#20a0f0', '#007BFF']} // ✅ گرادیانت آبی برند
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[
+                styles.messageBubbleBase,
+                styles.userMessage, // (استایل‌های پدینگ و ... را نگه می‌دارد)
+                isLastInGroup && (isTextRTL ? styles.userBubbleRTL : styles.userBubbleLTR)
+            ]}
+        >
+            {children}
+        </LinearGradient>
+    );
 
+    // ✅ کامپوننت داخلی برای حباب ربات (برای سادگی)
+    const BotBubble = ({ children }: { children: React.ReactNode }) => (
+        <View style={[
+            styles.messageBubbleBase,
+            styles.botMessage, // (استایل پس‌زمینه خاکستری)
+            isLastInGroup && (isTextRTL ? styles.botBubbleRTL : styles.botBubbleLTR)
+        ]}>
+            {children}
+        </View>
+    );
     return (
         <Animated.View style={[
             { marginBottom: 5 },
-            isMsgSending && { opacity: 0.6 } // ✅✅✅ خط جدید
+            isMsgSending && { opacity: 0.6 }
         ]}
             entering={FadeIn.duration(300)}
         >
-            {/* ردیف پیام (برای چینش راست/چپ) */}
+            {/* ردیف پیام */}
             <View
                 style={[
                     styles.messageRow,
                     isUser ? styles.userMessageRow : styles.botMessageRow
                 ]}
             >
-                {/* حباب پیام (با گوشه‌های چسبنده) */}
-                <View style={[
-                    styles.messageBubbleBase, // (این حالا borderRadius پیش‌فرض را دارد)
-                    isUser ? styles.userMessage : styles.botMessage,
-
-                    // ✅✅✅ منطق شرطی جدید ✅✅✅
-                    // فقط اگر آخرین پیام در گروه باشد، استایل "گوشه تیز" را اعمال کن
-                    isLastInGroup && (
-                        isUser
-                            ? (isTextRTL ? styles.userBubbleRTL : styles.userBubbleLTR)
-                            : (isTextRTL ? styles.botBubbleRTL : styles.botBubbleLTR)
-                    )
-                ]} >
-
-                    {/* --- محتوای حباب --- */}
-                    {showFile && (
-                        <View style={styles.fileInMessageBubble}>
-                            <Icon name="document-text" size={24} color={isUser ? "#FFFFFF" : "#EAEAEA"} style={{ marginRight: 10 }} />
-                            <Text style={[styles.fileInMessageText, isUser && { color: "#FFFFFF" }]} numberOfLines={2} ellipsizeMode="middle">
-                                {msgWithFile.fileAsset!.name}
-                            </Text>
-                        </View>
-                    )}
-                    {msgWithFile.audio && (
-                        <AudioPlayer uri={msgWithFile.audio} />
-                    )}
-
-                    {isTyping && !showText && !finalImageUri && !msgWithFile.audio && (
-                        <TypingIndicator />
-                    )}
-                    {showText && (
-                        <Markdown
-                            style={memoizedMarkdownStyles}
-                            rules={markdownRules}
-                        >
-                            {textContent}
-                        </Markdown>
-                    )}
-                    {finalImageUri && (
-                        <TouchableOpacity onPress={handleImagePress}>
-                            <Image
-                                source={{ uri: finalImageUri }}
-                                style={[styles.imageInMessage, !showText && { marginTop: 0 }]}
-                                resizeMode="cover"
-                            />
-                        </TouchableOpacity>
-                    )}
-                </View>
+                {/* ✅ استفاده از کامپوننت‌های حباب جدید */}
+                {isUser ? (
+                    <UserBubble>
+                        {/* ... (محتوای حباب مثل قبل) */}
+                        {showFile && (
+                            <View style={[styles.fileInMessageBubble, styles.userFileBubble]}>
+                                <Icon name="document-text" size={24} color={"#FFFFFF"} style={{ marginRight: 10 }} />
+                                <Text style={[styles.fileInMessageText, { color: "#FFFFFF" }]} numberOfLines={2} ellipsizeMode="middle">
+                                    {msgWithFile.fileAsset!.name}
+                                </Text>
+                            </View>
+                        )}
+                        {msgWithFile.audio && <AudioPlayer uri={msgWithFile.audio} />}
+                        {isTyping && !showText && !finalImageUri && !msgWithFile.audio && <TypingIndicator />}
+                        {showText && (
+                            <Markdown style={memoizedMarkdownStyles} rules={markdownRules}>
+                                {textContent}
+                            </Markdown>
+                        )}
+                        {finalImageUri && (
+                            <TouchableOpacity onPress={handleImagePress}>
+                                <Image source={{ uri: finalImageUri }} style={[styles.imageInMessage, !showText && { marginTop: 0 }]} />
+                            </TouchableOpacity>
+                        )}
+                    </UserBubble>
+                ) : (
+                    <BotBubble>
+                        {/* ... (محتوای حباب مثل قبل) */}
+                        {showFile && (
+                            <View style={[styles.fileInMessageBubble, styles.botFileBubble]}>
+                                <Icon name="document-text" size={24} color={"#EAEAEA"} style={{ marginRight: 10 }} />
+                                <Text style={styles.fileInMessageText} numberOfLines={2} ellipsizeMode="middle">
+                                    {msgWithFile.fileAsset!.name}
+                                </Text>
+                            </View>
+                        )}
+                        {msgWithFile.audio && <AudioPlayer uri={msgWithFile.audio} />}
+                        {isTyping && !showText && !finalImageUri && !msgWithFile.audio && <TypingIndicator />}
+                        {showText && (
+                            <Markdown style={memoizedMarkdownStyles} rules={markdownRules}>
+                                {textContent}
+                            </Markdown>
+                        )}
+                        {finalImageUri && (
+                            <TouchableOpacity onPress={handleImagePress}>
+                                <Image source={{ uri: finalImageUri }} style={[styles.imageInMessage, !showText && { marginTop: 0 }]} />
+                            </TouchableOpacity>
+                        )}
+                    </BotBubble>
+                )}
             </View>
 
-            {/* --- دکمه‌های اکشن --- */}
+            {/* --- دکمه‌های اکشن (با استایل جدید) --- */}
             {!isTyping && (
                 <View style={[
                     styles.actionButtonContainer,
@@ -212,12 +238,14 @@ const MessageItem = ({
                         <>
                             {isLastUserMessage && (
                                 <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
-                                    <Icon name="pencil-outline" size={16} color="#999" />
+                                    <Icon name="pencil-outline" size={14} color="#E0E0E0" />
+                                    <Text style={styles.actionButtonText}>ویرایش</Text>
                                 </TouchableOpacity>
                             )}
                             {showText && (
                                 <TouchableOpacity onPress={handleCopy} style={styles.actionButton}>
-                                    <Icon name="copy-outline" size={16} color="#999" />
+                                    <Icon name="copy-outline" size={14} color="#E0E0E0" />
+                                    <Text style={styles.actionButtonText}>کپی</Text>
                                 </TouchableOpacity>
                             )}
                         </>
@@ -225,12 +253,14 @@ const MessageItem = ({
                         <>
                             {isLastBotMessage && (
                                 <TouchableOpacity onPress={handleRegen} style={styles.actionButton}>
-                                    <Icon name="refresh-outline" size={16} color="#999" />
+                                    <Icon name="refresh-outline" size={14} color="#E0E0E0" />
+                                    <Text style={styles.actionButtonText}>بازسازی</Text>
                                 </TouchableOpacity>
                             )}
                             {showText && (
                                 <TouchableOpacity onPress={handleCopy} style={styles.actionButton}>
-                                    <Icon name="copy-outline" size={16} color="#999" />
+                                    <Icon name="copy-outline" size={14} color="#E0E0E0" />
+                                    <Text style={styles.actionButtonText}>کپی</Text>
                                 </TouchableOpacity>
                             )}
                         </>
@@ -241,6 +271,4 @@ const MessageItem = ({
     );
 };
 
-// ✅✅✅ جادوی اصلی اینجاست: React.memo ✅✅✅
-// این کامپوننت فقط زمانی رندر می‌شود که propsهایش (مثل msg.id) تغییر کنند.
 export default React.memo(MessageItem);

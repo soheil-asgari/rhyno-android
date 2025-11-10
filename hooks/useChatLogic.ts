@@ -17,7 +17,7 @@ import { useAttachmentPicker } from '../hooks/useAttachmentPicker';
 
 // ابزارهایی که در فاز ۱ ساختیم
 import { createBotMessage, getTimestamp } from '../utils/chatUtils';
-
+import * as DocumentPicker from 'expo-document-picker';
 // 🛑 آدرس بک‌اند را اینجا تعریف می‌کنیم
 const YOUR_BACKEND_URL = 'https://www.rhynoai.ir';
 
@@ -31,11 +31,9 @@ type StagedFileState = {
 const JSON_MODELS = [
     "gpt-4o-mini-tts", // (مدل TTS شما)
     "dall-e-3",
-    "gpt-5",
-    "gpt-5-mini",
     "gpt-4o-transcribe"
 ];
-
+import * as ImagePicker from 'expo-image-picker';
 // ----------------------------------------------------------------
 //
 //               🔥 هوک اصلی منطق چت 🔥
@@ -74,7 +72,7 @@ export const useChatLogic = () => {
     const [editText, setEditText] = useState<string | null>(null);
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [micPermissionGranted, setMicPermissionGranted] = useState(false);
-
+    const [isAttachModalVisible, setAttachModalVisible] = useState(false);
     // --- Refs ---
     const isCreatingChatRef = useRef(false);
     const accumulatedTextRef = useRef('');
@@ -345,11 +343,32 @@ export const useChatLogic = () => {
                         try {
                             if (xhr.status >= 200 && xhr.status < 300) {
                                 console.log("--- [ChatLogic] 5. XHR Stream SUCCESS. ---");
+
+                                // --- ✅✅✅ راه‌حل نهایی و قوی‌تر ✅✅✅ ---
+                                //
+                                // اگر onprogress اجرا نشده بود (ref خالی است)،
+                                // سعی کن متن را از responseText یا response بخوانی
+                                if (accumulatedTextRef.current.length === 0) {
+                                    // xhr.response قابل اعتمادتر از xhr.responseText در این حالت است
+                                    const responseBody = xhr.response || xhr.responseText;
+
+                                    if (responseBody && typeof responseBody === 'string') {
+                                        console.log("--- [ChatLogic] 5a. QuickReply detected. Reading from xhr.response. ---");
+                                        accumulatedTextRef.current = responseBody;
+                                    } else {
+                                        console.warn("--- [ChatLogic] 5b. QuickReply flow, but responseBody is empty or not a string. ---");
+                                    }
+                                }
+                                // --- پایان راه‌حل نهایی ---
+
                                 const finalAssistantText = accumulatedTextRef.current;
+
+                                // (این تابع متن را در UI نمایش می‌دهد)
                                 stopStreamingUpdates(false, null);
 
-                                if (finalAssistantText && activeChatId && user) {
-                                    // (کد ذخیره پیام در دیتابیس)
+                                // (این کد پاسخ را در دیتابیس ذخیره می‌کند)
+                                if (finalAssistantText && finalAssistantText.trim().length > 0 && activeChatId && user) {
+                                    console.log(`--- [ChatLogic] 6. Saving final text to DB: "${finalAssistantText.substring(0, 20)}..." ---`);
                                     await supabase.from('messages').insert({
                                         chat_id: activeChatId,
                                         user_id: user.id,
@@ -359,14 +378,18 @@ export const useChatLogic = () => {
                                         sequence_number: messages.length,
                                         image_paths: []
                                     });
+                                } else {
+                                    console.log("--- [ChatLogic] 6. Skipping DB save (final text is empty). ---");
                                 }
+
                                 await supabase.from('chats').update({ updated_at: new Date().toISOString() })
                                     .eq('id', activeChatId)
                                     .eq('user_id', user.id);
                                 resolve();
 
                             } else {
-                                const errorText = xhr.responseText || 'خطای ناشناخته XHR';
+                                // ... (بقیه کد خطا)
+                                const errorText = xhr.responseText || xhr.response || 'خطای ناشناخته XHR';
                                 console.error(`--- [ChatLogic] ❗️ 5. XHR Stream FAILED. Status: ${xhr.status} ---`, errorText);
                                 accumulatedTextRef.current = `خطای سرور ${xhr.status}: ${errorText}`;
                                 stopStreamingUpdates(true, null);
@@ -412,22 +435,33 @@ export const useChatLogic = () => {
                 });
 
                 console.log(`--- [ChatLogic] 5. JSON Response Status: ${response.status} ---`); // 🪵 لاگ ۵
+                const responseText = await response.text();
 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error(`--- [ChatLogic] ❗️ 6. JSON Response FAILED: ${errorText} ---`); // 🪵 لاگ ۶ (خطا)
-                    throw new Error(`Server error ${response.status}: ${errorText}`);
+                    // اگر سرور خطای غیر 200 داد، متن خطا را نمایش بده
+                    console.error(`--- [ChatLogic] ❗️ 6. JSON Response FAILED (Status ${response.status}): ${responseText} ---`);
+                    throw new Error(`Server error ${response.status}: ${responseText}`);
                 }
 
-                const data = await response.json();
-                console.log("--- [ChatLogic] 6. JSON Response SUCCESS. Data:", data); // 🪵 لاگ ۶ (موفق)
 
-                // (بک‌اند شما text و audioUrl را در آبجکت JSON برمی‌گرداند)
+                let data: any;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError: any) {
+                    // ✅ اینجا خطای شما رخ می‌دهد (پاسخ 200 بود اما JSON نبود)
+                    console.error(`--- [ChatLogic] ❗️ 6. JSON Parse FAILED. Server sent non-JSON 200 OK response: ${responseText} ---`);
+                    // متن خطای واقعی (که با "س" شروع می‌شود) را به کاربر نشان بده
+                    throw new Error(`خطا در پارس کردن پاسخ سرور: ${responseText}`);
+                }
+                // ✅✅✅✅✅ پایان رفع باگ ✅✅✅✅✅
+
+                console.log("--- [ChatLogic] 6. JSON Response SUCCESS. Data:", data);
+
                 const newText = data.text || 'پاسخ دریافت شد';
                 const newImage = data.imageUrl || undefined;
-                const newAudio = data.audioUrl || undefined; // ✅✅✅ این همان چیزی است که می‌خواهیم
+                const newAudio = data.audioUrl || undefined;
 
-                console.log(`--- [ChatLogic] 7. Parsed Data: newText=${newText}, newAudio=${newAudio} ---`); // 🪵 لاگ ۷
+                console.log(`--- [ChatLogic] 7. Parsed Data: newText=${newText}, newAudio=${newAudio} ---`);
 
                 // --- پیام "در حال تایپ" را با پیام نهایی جایگزین کن ---
                 setMessages(prev =>
@@ -838,17 +872,77 @@ export const useChatLogic = () => {
     const handleVoiceInputPress = handleToggleRecording; // (مستقیماً خود تابع را برمی‌گردانیم)
 
     // --- Attachment Actions ---
-    const handleFileSelect = (asset: DocumentPickerAsset | null) => {
-        if (asset) {
-            setStagedFileState({ asset, status: 'uploading' });
-        } else {
-            setStagedFileState(null);
+    const handleImagePick = useCallback(async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('خطا', 'برای انتخاب عکس به اجازه دسترسی به گالری نیاز داریم.');
+            return;
+        }
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+        });
+
+        if (result.canceled || !result.assets) return;
+
+        const asset = result.assets[0];
+
+        // --- ‼️ شروع تغییرات ---
+        let base64Data: string;
+        try {
+            // ۲. فایل را از روی URI می‌خوانیم و به Base64 تبدیل می‌کنیم
+            base64Data = await FileSystem.readAsStringAsync(asset.uri, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+        } catch (e: any) {
+            console.error("Error reading image as Base64:", e);
+            Alert.alert('خطا', 'خطا در خواندن فایل عکس: ' + e.message);
+            return;
+        }
+
+        // ۳. یک "Data URL" استاندارد می‌سازیم
+        // (نوع عکس را می‌توانید بر اساس asset.mimeType داینامیک کنید)
+        const base64DataUrl = `data:image/jpeg;base64,${base64Data}`;
+        // --- ‼️ پایان تغییرات ---
+
+
+        setStagedFileState(null); // فایل قبلی را پاک کن
+
+        // ۴. به جای asset.uri، دیتا URL را در State ذخیره می‌کنیم
+        setStagedImage(base64DataUrl);
+
+    }, [setStagedImage, setStagedFileState]);
+
+    const handleFilePick = useCallback(async () => {
+        let docResult: DocumentPicker.DocumentPickerResult;
+        try {
+            docResult = await DocumentPicker.getDocumentAsync({
+                type: ["application/pdf", "text/plain", /* ... (سایر mime-type ها) */],
+            });
+        } catch (e: any) {
+            Alert.alert("خطا", "خطا در انتخاب فایل: " + e.message);
+            return;
+        }
+
+        if (docResult.canceled || !docResult.assets) return;
+
+        setStagedImage(null); // عکس قبلی را پاک کن
+        setStagedFileState({ asset: docResult.assets[0], status: 'uploading' }); // فایل را ست کن
+
+    }, [setStagedFileState, setStagedImage]); // وابستگی‌ها
+    const handleAttachPress = () => {
+        setAttachModalVisible(true); // فقط مودال را باز می‌کند
+    };
+    const onModalOptionPress = (type: 'image' | 'file' | 'voice' | 'cancel') => {
+        setAttachModalVisible(false); // مودال را ببند
+        if (type === 'image') {
+            handleImagePick(); // تابع انتخاب عکس را فراخوانی کن
+        } else if (type === 'file') {
+            handleFilePick(); // تابع انتخاب فایل را فراخوانی کن
+        } else if (type === 'voice') {
+            Alert.alert("به زودی", "این قابلیت در حال ساخت است.");
         }
     };
-    const { handleAttachPress } = useAttachmentPicker({
-        setStagedImage,
-        setStagedFile: handleFileSelect
-    });
 
     // --- Mic Permission ---
     const requestMicrophonePermission = useCallback(async () => {
@@ -886,14 +980,59 @@ export const useChatLogic = () => {
         Clipboard.setString(text);
         Toast.show({ type: 'success', text1: 'در کلیپ‌بورد کپی شد!' });
     }, []);
+    const handleDeleteChat = useCallback(async () => {
+        if (!currentChatId || !user) {
+            throw new Error('کاربر یا شناسه چت برای حذف یافت نشد.');
+        }
 
+        try {
+            // ۱. (اختیاری اما پیشنهادی) اول پیام‌های مرتبط را حذف کنید
+            // اگر RLS (Row Level Security) شما طوری تنظیم شده که با حذف چت،
+            // پیام‌ها هم به صورت Cascade حذف شوند، این بخش لازم نیست.
+            const { error: messagesError } = await supabase
+                .from('messages')
+                .delete()
+                .eq('chat_id', currentChatId);
+
+            if (messagesError) {
+                console.error('خطا در حذف پیام‌ها:', messagesError);
+                throw new Error(`خطا در حذف پیام‌های چت: ${messagesError.message}`);
+            }
+
+            // ۲. خود چت را حذف کنید
+            const { error: chatError } = await supabase
+                .from('chats')
+                .delete()
+                .eq('id', currentChatId)
+                .eq('user_id', user.id); // شرط user_id برای امنیت حیاتی است
+
+            if (chatError) {
+                console.error('خطا در حذف چت:', chatError);
+                throw new Error(`خطا در حذف چت: ${chatError.message}`);
+            }
+
+            // نیازی به return نیست.
+            // کامپوننت ChatScreen (که در مرحله قبل نوشتیم)
+            // پس از موفقیت این تابع، کار هدایت به چت جدید را انجام می‌دهد.
+
+        } catch (error: any) {
+            console.error("خطای جامع حذف چت:", error);
+            // خطا را مجدداً پرتاب کنید تا UI (ChatScreen) آن را بگیرد و Toast را نشان دهد
+            throw error;
+        }
+    }, [supabase, currentChatId, user]);
     const handleEditMessage = useCallback((msg: IMessage) => {
         setEditText(msg.text);
         setStagedImage(msg.image || null);
         // (Note: File editing not supported in this flow)
         setStagedFileState(null);
     }, []);
-
+    const onEditCancel = useCallback(() => {
+        setEditText(null);
+        setStagedImage(null);
+        // (مطمئن شوید که inputKey ریست می‌شود تا متن داخلش پاک شود)
+        setInputKey(`input-key-${Date.now()}`);
+    }, []);
     const handleRegenerate = useCallback((messageIndex: number) => {
         const userMessage = messages[messageIndex - 1];
         if (!userMessage || userMessage.user._id !== 1) {
@@ -912,7 +1051,14 @@ export const useChatLogic = () => {
     //
     // 🛑 === ۶. EFFECTS ===
     //
-
+    const handleVoiceStop = useCallback(() => {
+        if (setSelectedModel) {
+            setSelectedModel("gpt-4o-mini"); // یا هر مدل پیش‌فرض دیگری
+            Alert.alert('مکالمه پایان یافت', 'به حالت چت متنی بازگشتید.');
+            // نیازی به handleNewChatPress نیست، چون تغییر مدل
+            // باعث خروج از حالت Realtime می‌شود.
+        }
+    }, [setSelectedModel]);
     // --- Effect: Load chat on ID change ---
     useEffect(() => {
         const chatId = currentChatId;
@@ -1007,10 +1153,15 @@ export const useChatLogic = () => {
         handleCopyMessage,
         handleEditMessage,
         handleRegenerate,
-
+        handleDeleteChat,
+        handleVoiceStop,
         // --- Setters (برای ChatInput) ---
         onClearStagedImage: () => setStagedImage(null),
         onClearStagedFile: () => setStagedFileState(null),
         onEditTextDone: () => setEditText(null),
+        onEditCancel: onEditCancel,
+        isAttachModalVisible,
+        onModalOptionPress,
+        onCloseAttachModal: () => setAttachModalVisible(false),
     };
 };

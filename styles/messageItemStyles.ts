@@ -24,47 +24,16 @@ export const messageItemStyles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.2)',
     },
-    fileInMessageText: {
-        color: '#EAEAEA',
-        fontSize: 15,
-        flexShrink: 1,
-        fontFamily: FONT_REGULAR,
-    },
-    messageRow: { // کانتینر ردیف
-        flexDirection: 'row',
-        marginVertical: 5,
-    },
+
+
     userMessageRow: { // چینش راست
         justifyContent: 'flex-end',
     },
     botMessageRow: { // چینش چپ
         justifyContent: 'flex-end', // ✅ اصلاح شد: قبلاً flex-end بود
     },
-    actionButtonContainer: {
-        flexDirection: 'row',
-        marginTop: 6, // فاصله از حباب
-        marginHorizontal: 12, // همراستا با حباب
-    },
-    actionButton: {
-        paddingVertical: 3,
-        paddingHorizontal: 7,
-        borderRadius: 16,
-        marginHorizontal: 2,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    messageBubbleBase: {
-        padding: 12,
-        maxWidth: '95%',
-        marginHorizontal: 5, // کمی فاصله از لبه
-        borderRadius: BUBBLE_RADIUS,
-    },
-    userMessage: {
-        backgroundColor: '#2C2C2E',
-    },
-    botMessage: {
-        backgroundColor: '#000000ff', // ✅ رنگ ربات کمی متفاوت شد
-    },
+
+
     // کاربر - انگلیسی (می‌چسبد به راست)
     userBubbleLTR: {
         borderBottomLeftRadius: BUBBLE_RADIUS,
@@ -92,5 +61,63 @@ export const messageItemStyles = StyleSheet.create({
         borderTopLeftRadius: BUBBLE_RADIUS,
         borderBottomRightRadius: STICKY_RADIUS, // <- تیز
         borderTopRightRadius: BUBBLE_RADIUS,
+    },
+    userFileBubble: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)', // شفاف روی گرادیانت
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    botFileBubble: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)', // شفاف روی خاکستری
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    fileInMessageText: {
+        color: '#EAEAEA',
+        fontSize: 15,
+        flexShrink: 1,
+        fontFamily: FONT_REGULAR,
+    },
+    messageRow: {
+        flexDirection: 'row',
+        marginVertical: 2, // ✅ کاهش فاصله عمودی
+    },
+
+
+    // ✅✅✅ بازطراحی کامل دکمه‌های اکشن ✅✅✅
+    actionButtonContainer: {
+        flexDirection: 'row',
+        marginTop: 4, // ✅ فاصله کمتر
+        marginHorizontal: 12,
+        marginBottom: 8, // ✅ اضافه شدن فاصله پایینی
+    },
+    actionButton: {
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: 16, // کپسولی
+        marginHorizontal: 3,
+        backgroundColor: '#2C2C2E', // ✅ پس‌زمینه کپسولی
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#3C3C3E', // ✅ یک حاشیه ظریف
+    },
+    actionButtonText: {
+        color: '#E0E0E0',
+        fontSize: 12,
+        fontFamily: FONT_REGULAR,
+        marginLeft: 4,
+    },
+    // ✅✅✅ پایان بازطراحی ✅✅✅
+
+    messageBubbleBase: {
+        padding: 12,
+        maxWidth: '95%',
+        marginHorizontal: 5,
+        borderRadius: BUBBLE_RADIUS,
+    },
+    userMessage: {
+        backgroundColor: 'transparent', // ✅ رنگ توسط گرادیانت تامین می‌شود
+    },
+    botMessage: {
+        backgroundColor: '#000000ff', // ✅ کمی روشن‌تر شد
     },
 });

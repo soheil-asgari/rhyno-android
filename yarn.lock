@@ -4616,7 +4616,7 @@ expo-sharing@~14.0.7:
   resolved "https://registry.npmmirror.com/expo-sharing/-/expo-sharing-14.0.7.tgz#64845ea569c725a9a32705be7ef772e556134e1c"
   integrity sha512-t/5tR8ZJNH6tMkHXlF7453UafNIfrpfTG+THN9EMLC4Wsi4bJuESPm3NdmWDg2D4LDALJI/LQo0iEnLAd5Sp4g==
 
-expo-web-browser@~15.0.8:
+expo-web-browser@~15.0.9:
   version "15.0.9"
   resolved "https://registry.npmmirror.com/expo-web-browser/-/expo-web-browser-15.0.9.tgz#248b8de8f901e68e89944c85a46ee40205190f59"
   integrity sha512-Dj8kNFO+oXsxqCDNlUT/GhOrJnm10kAElH++3RplLydogFm5jTzXYWDEeNIDmV+F+BzGYs+sIhxiBf7RyaxXZg==
@@ -6042,9 +6042,9 @@ joi@^17.2.1:
     "@sideway/pinpoint" "^2.0.0"
 
 jose@^6.1.0:
-  version "6.1.0"
-  resolved "https://registry.npmmirror.com/jose/-/jose-6.1.0.tgz#96285365689d16f2845a353964d2284bf19f464c"
-  integrity sha512-TTQJyoEoKcC1lscpVDCSsVgYzUDg/0Bt3WE//WiTPK6uOCQC2KZS4MpugbMWt/zyjkopgZoXhZuCi00gLudfUA==
+  version "6.1.1"
+  resolved "https://registry.npmmirror.com/jose/-/jose-6.1.1.tgz#2be48f5171ca8cb231e313da8572c05c48c68eb6"
+  integrity sha512-GWSqjfOPf4cWOkBzw5THBjtGPhXKqYnfRBzh4Ni+ArTrQQ9unvmsA3oFLqaYKoKe5sjWmGu5wVKg9Ft1i+LQfg==
 
 "js-tokens@^3.0.0 || ^4.0.0", js-tokens@^4.0.0:
   version "4.0.0"
@@ -6369,6 +6369,11 @@ loose-envify@^1.0.0, loose-envify@^1.4.0:
   integrity sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==
   dependencies:
     js-tokens "^3.0.0 || ^4.0.0"
+
+lottie-react-native@~7.3.1:
+  version "7.3.4"
+  resolved "https://registry.npmmirror.com/lottie-react-native/-/lottie-react-native-7.3.4.tgz#774bc028e2b93dd88cd87ab84ac51a1c3e015cad"
+  integrity sha512-XUh7eGFb7ID8JRdU6U4N4cYQeYmjtdQRvd8ZXJ6xrdSsn5gZD0c79ITOREPcwJg4YupBFHgyV1GXdAHQP+KYUQ==
 
 lowlight@^1.17.0:
   version "1.20.0"
@@ -7662,6 +7667,13 @@ react-is@^19.1.0:
   resolved "https://registry.npmmirror.com/react-is/-/react-is-19.2.0.tgz#ddc3b4a4e0f3336c3847f18b806506388d7b9973"
   integrity sha512-x3Ax3kNSMIIkyVYhWPyO09bu0uttcAIoecO/um/rKGQ4EltYWVYtyiGkS/3xMynrbVQdS69Jhlv8FXUEZehlzA==
 
+react-native-animatable@1.4.0:
+  version "1.4.0"
+  resolved "https://registry.npmmirror.com/react-native-animatable/-/react-native-animatable-1.4.0.tgz#05a259e1566081ce7d3f6fba1e92edc65f5c6160"
+  integrity sha512-DZwaDVWm2NBvBxf7I0wXKXLKb/TxDnkV53sWhCvei1pRyTX3MVFpkvdYBknNBqPrxYuAIlPxEp7gJOidIauUkw==
+  dependencies:
+    prop-types "^15.8.1"
+
 react-native-communications@^2.2.1:
   version "2.2.1"
   resolved "https://registry.npmmirror.com/react-native-communications/-/react-native-communications-2.2.1.tgz#7883b56b20a002eeb790c113f8616ea8692ca795"
@@ -7766,6 +7778,13 @@ react-native-markdown-display@^7.0.2:
     prop-types "^15.7.2"
     react-native-fit-image "^1.5.5"
 
+react-native-modal@^14.0.0-rc.1:
+  version "14.0.0-rc.1"
+  resolved "https://registry.npmmirror.com/react-native-modal/-/react-native-modal-14.0.0-rc.1.tgz#d193af884c910ec34a4953508c7656b5fc83d7d4"
+  integrity sha512-v5pvGyx1FlmBzdHyPqBsYQyS2mIJhVmuXyNo5EarIzxicKhuoul6XasXMviGcXboEUT0dTYWs88/VendojPiVw==
+  dependencies:
+    react-native-animatable "1.4.0"
+
 react-native-parsed-text@^0.0.22:
   version "0.0.22"
   resolved "https://registry.npmmirror.com/react-native-parsed-text/-/react-native-parsed-text-0.0.22.tgz#a23c756eaa5d6724296814755085127f9072e5f5"
@@ -7804,9 +7823,9 @@ react-native-screens@~4.16.0:
     warn-once "^0.1.0"
 
 react-native-share@^12.2.0:
-  version "12.2.0"
-  resolved "https://registry.npmmirror.com/react-native-share/-/react-native-share-12.2.0.tgz#d7011825bf79631858de459873ee2618235031d6"
-  integrity sha512-f6MB9BsKa9xVvu0DKbxq5jw4IyYHqQeqUlCNkD8eAFoJx6SD31ObPAn7SQ6NG9AOuhCy6aYuSJYJvx25DaoMZQ==
+  version "12.2.1"
+  resolved "https://registry.npmmirror.com/react-native-share/-/react-native-share-12.2.1.tgz#ee19e2c835099a2f4b627a68e62d2019658ceb05"
+  integrity sha512-DPfvqQMbbLK4ykPkqYarby5AXdgFsbefOhsQHkOrDeAIixWzeI4oe/WvI7AoYmlQxM4Ys2DcBPBWDYQ6gn5xYA==
 
 react-native-syntax-highlighter@^2.1.0:
   version "2.1.0"
