@@ -213,7 +213,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                 // بازگرداندن به حالت پیش‌فرض در صورت خطا
                 setIsLoadingChatSettings(false);
                 setIsLoadingModels(false);
-                setAvailableModels([{ label: 'gpt-4o (Fallback)', value: 'gpt-4o' }]);
+                setAvailableModels([{ label: 'gpt-4o-mini (Fallback)', value: 'gpt-4o-mini' }]);
             }
         };
 

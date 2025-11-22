@@ -21,7 +21,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useChat } from '../context/ChatContext';
 import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
-import type { DrawerParamList } from '../screens/Navigation';
+import { DrawerParamList } from '../types/navigation.types';
 import { supabase } from '../lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 

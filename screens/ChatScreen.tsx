@@ -42,8 +42,8 @@ import { LLMID } from '../types/llms';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AttachmentModal } from '../components/AttachmentModal';
 import { CommonActions } from '@react-navigation/native';
-import { useAndroidBackHandler } from './Navigation';
-
+import { useAndroidBackHandler } from '../hooks/useAndroidBackHandler';
+import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 
 
 
@@ -63,9 +63,7 @@ export default function ChatScreen() {
         handleCopyMessage, handleEditMessage, handleRegenerate,
 
         // Setters (برای ChatInput)
-        onClearStagedImage, onClearStagedFile, onEditTextDone, messages, onEditCancel, handleVoiceStop, handleDeleteChat, isAttachModalVisible,
-        onModalOptionPress,
-        onCloseAttachModal,
+        onClearStagedImage, onClearStagedFile, onEditTextDone, messages, onEditCancel, handleVoiceStop, handleDeleteChat
     } = useChatLogic();
 
     // (وابستگی‌های Context/Navigation که هوک به آن‌ها نیاز ندارد)
@@ -315,7 +313,7 @@ export default function ChatScreen() {
     if (isLoadingAuth || (loadingMessages && !initialLoadComplete)) {
         return (
             <LinearGradient
-                colors={['#050505', '#000000']}
+                colors={['#101418', '#000000']}
                 style={{ flex: 1 }}
             >
                 <SafeAreaView style={styles.container}>
@@ -366,7 +364,7 @@ export default function ChatScreen() {
     return (
 
         <LinearGradient
-            colors={['#050505', '#000000']}
+            colors={['#101418', '#000000']}
             style={{ flex: 1 }}
         >
             <SafeAreaView style={styles.container}>
@@ -382,13 +380,32 @@ export default function ChatScreen() {
                 >
                     {messages.length === 0 && !currentChatId ? (
                         <View style={styles.welcomeContainer}>
-                            <Image
+                            {/* ✅ استفاده از کامپوننت‌های انیمیشنی */}
+                            <Animated.Image
                                 source={require('../assets/rhyno_white.png')}
                                 style={styles.welcomeLogo}
+                                entering={FadeInUp.duration(500).delay(100)}
                             />
-                            <Text style={styles.welcomeTitle}>سلام {firstName} 👋</Text>
-                            <Text style={styles.welcomeSubtitle}>چطور می‌تونم کمکت کنم؟</Text>
-                            <WelcomePrompts onPromptClick={handlePromptClick} />
+                            <Animated.Text
+                                style={styles.welcomeTitle}
+                                entering={FadeInUp.duration(500).delay(200)}
+                            >
+                                سلام {firstName} 👋
+                            </Animated.Text>
+                            <Animated.Text
+                                style={styles.welcomeSubtitle}
+                                entering={FadeInUp.duration(500).delay(300)}
+                            >
+                                چطور می‌تونم کمکت کنم؟
+                            </Animated.Text>
+
+                            {/* ✅ کانتینر انیمیشنی برای پرامپت‌ها */}
+                            <Animated.View
+                                style={{ width: '100%' }}
+                                entering={FadeInDown.duration(500).delay(400)}
+                            >
+                                <WelcomePrompts onPromptClick={handlePromptClick} />
+                            </Animated.View>
                         </View>
                     ) : (
                         <FlatList
@@ -430,11 +447,7 @@ export default function ChatScreen() {
                             </View>
                         </View>
                     </Modal>
-                    <AttachmentModal
-                        isVisible={isAttachModalVisible}
-                        onClose={onCloseAttachModal}
-                        onSelectOption={onModalOptionPress}
-                    />
+
                     {/* ورودی چت */}
                     <ChatInput
                         key={inputKey}

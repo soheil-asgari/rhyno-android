@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabase';
 import { useChat } from '../context/ChatContext';
 import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
 import { useAttachmentPicker } from '../hooks/useAttachmentPicker';
-
+import { useActionSheet } from '@expo/react-native-action-sheet';
 // ابزارهایی که در فاز ۱ ساختیم
 import { createBotMessage, getTimestamp } from '../utils/chatUtils';
 import * as DocumentPicker from 'expo-document-picker';
@@ -78,7 +78,7 @@ export const useChatLogic = () => {
     const accumulatedTextRef = useRef('');
     const typingMessageIdRef = useRef<string | number | null>(null);
     const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
+    const { showActionSheetWithOptions } = useActionSheet();
     //
     // 🛑 === ۲. MEMOIZED VALUES ===
     //
@@ -119,7 +119,11 @@ export const useChatLogic = () => {
     const startStreamingUpdates = useCallback(() => {
         if (updateIntervalRef.current) clearInterval(updateIntervalRef.current);
         updateIntervalRef.current = setInterval(() => {
-            if (!typingMessageIdRef.current) return;
+            // 🛑🛑 گارد جدید و بسیار مهم 🛑🛑
+            // اگر تایمر متوقف شده بود (ref نال شده) یا پیام تایپینگ نال شده بود، اجرا نشو
+            if (!typingMessageIdRef.current || !updateIntervalRef.current) {
+                return;
+            }
             const currentText = accumulatedTextRef.current;
             setMessages(prev =>
                 prev.map(msg =>
@@ -140,9 +144,13 @@ export const useChatLogic = () => {
 
         if (!isError && typingMessageIdRef.current) {
             const finalText = accumulatedTextRef.current;
+            // ✅ ۱. مقدار ID را قبل از null شدن در یک متغیر ذخیره کنید
+            const messageIdToUpdate = typingMessageIdRef.current;
+
             setMessages(prev =>
                 prev.map(msg =>
-                    msg._id === typingMessageIdRef.current
+                    // ✅ ۲. از متغیر محلی در تابع setMessages استفاده کنید
+                    msg._id === messageIdToUpdate
                         ? {
                             ...msg,
                             text: finalText || 'پاسخی دریافت نشد.',
@@ -163,10 +171,10 @@ export const useChatLogic = () => {
             );
         }
 
-        accumulatedTextRef.current = '';
         typingMessageIdRef.current = null;
+        accumulatedTextRef.current = '';
         setIsSending(false);
-    }, [setMessages, setIsSending]); // setMessages, setIsSending
+    }, [setMessages, setIsSending]);
 
     const fetchMessages = useCallback(async (chatId: string) => {
         if (!chatId) {
@@ -930,19 +938,35 @@ export const useChatLogic = () => {
         setStagedFileState({ asset: docResult.assets[0], status: 'uploading' }); // فایل را ست کن
 
     }, [setStagedFileState, setStagedImage]); // وابستگی‌ها
-    const handleAttachPress = () => {
-        setAttachModalVisible(true); // فقط مودال را باز می‌کند
-    };
-    const onModalOptionPress = (type: 'image' | 'file' | 'voice' | 'cancel') => {
-        setAttachModalVisible(false); // مودال را ببند
-        if (type === 'image') {
-            handleImagePick(); // تابع انتخاب عکس را فراخوانی کن
-        } else if (type === 'file') {
-            handleFilePick(); // تابع انتخاب فایل را فراخوانی کن
-        } else if (type === 'voice') {
-            Alert.alert("به زودی", "این قابلیت در حال ساخت است.");
-        }
-    };
+    const handleAttachPress = useCallback(() => {
+        const options = ['انتخاب عکس از گالری', 'انتخاب فایل (PDF, TXT)', 'انصراف'];
+        const cancelButtonIndex = 2;
+        // const destructiveButtonIndex = 2; // نیازی نیست
+
+        showActionSheetWithOptions(
+            {
+                options,
+                cancelButtonIndex,
+                // استایل‌های سفارشی برای حالت تیره
+                containerStyle: { backgroundColor: '#1C1C1E' },
+                textStyle: { color: '#FFF', fontFamily: 'Vazirmatn-Medium' },
+            },
+            (selectedIndex?: number) => {
+                switch (selectedIndex) {
+                    case 0:
+                        handleImagePick(); // ⬅️ تابع قبلی شما
+                        break;
+                    case 1:
+                        handleFilePick(); // ⬅️ تابع قبلی شما
+                        break;
+                    case 2:
+                    default:
+                        // 'انصراف'
+                        break;
+                }
+            }
+        );
+    }, [showActionSheetWithOptions, handleImagePick, handleFilePick]);
 
     // --- Mic Permission ---
     const requestMicrophonePermission = useCallback(async () => {
@@ -977,6 +1001,7 @@ export const useChatLogic = () => {
     //
 
     const handleCopyMessage = useCallback((text: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         Clipboard.setString(text);
         Toast.show({ type: 'success', text1: 'در کلیپ‌بورد کپی شد!' });
     }, []);
@@ -1022,6 +1047,7 @@ export const useChatLogic = () => {
         }
     }, [supabase, currentChatId, user]);
     const handleEditMessage = useCallback((msg: IMessage) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setEditText(msg.text);
         setStagedImage(msg.image || null);
         // (Note: File editing not supported in this flow)
@@ -1034,6 +1060,7 @@ export const useChatLogic = () => {
         setInputKey(`input-key-${Date.now()}`);
     }, []);
     const handleRegenerate = useCallback((messageIndex: number) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         const userMessage = messages[messageIndex - 1];
         if (!userMessage || userMessage.user._id !== 1) {
             Toast.show({ type: 'error', text1: 'پیام کاربر قبلی یافت نشد' });
@@ -1054,7 +1081,7 @@ export const useChatLogic = () => {
     const handleVoiceStop = useCallback(() => {
         if (setSelectedModel) {
             setSelectedModel("gpt-4o-mini"); // یا هر مدل پیش‌فرض دیگری
-            Alert.alert('مکالمه پایان یافت', 'به حالت چت متنی بازگشتید.');
+            Toast.show({ type: 'success', text1: 'به حالت چت متنی بازگشتید.' });
             // نیازی به handleNewChatPress نیست، چون تغییر مدل
             // باعث خروج از حالت Realtime می‌شود.
         }
@@ -1160,8 +1187,7 @@ export const useChatLogic = () => {
         onClearStagedFile: () => setStagedFileState(null),
         onEditTextDone: () => setEditText(null),
         onEditCancel: onEditCancel,
-        isAttachModalVisible,
-        onModalOptionPress,
-        onCloseAttachModal: () => setAttachModalVisible(false),
+
+
     };
 };

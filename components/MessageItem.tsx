@@ -164,7 +164,7 @@ const MessageItem = ({
     );
     return (
         <Animated.View style={[
-            { marginBottom: 5 },
+            { marginBottom: 5, width: '100%' },
             isMsgSending && { opacity: 0.6 }
         ]}
             entering={FadeIn.duration(300)}

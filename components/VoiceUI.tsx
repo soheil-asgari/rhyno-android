@@ -12,7 +12,7 @@ import {
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import Icon from 'react-native-vector-icons/Ionicons';
 import InCallManager from 'react-native-incall-manager';
-import { Audio } from 'expo-av';
+
 
 
 
@@ -29,40 +29,36 @@ export const VoiceUI: React.FC<VoiceUIProps> = ({
 }) => {
 
     const webViewRef = useRef<WebView>(null);
-    useEffect(() => {
-        // [اصلاح] ما 2 ثانیه صبر می‌کنیم تا به WebView فرصت دهیم
-        // ابتدا اتصال WebRTC و getUserMedia را برقرار کند.
-        const timerId = setTimeout(() => {
-            console.log("🔊 [InCallManager] Starting... Forcing speaker. (After delay)");
-            try {
-                // حالت تماس را شروع می‌کند
-                InCallManager.start({ media: 'audio' });
-                // صدا را به زور روی بلندگو می‌اندازد
-                InCallManager.setForceSpeakerphoneOn(true);
-                // (اختیاری) صفحه را روشن نگه می‌دارد
-                InCallManager.setKeepScreenOn(true);
-            } catch (err: any) {
-                console.error("InCallManager error:", err.message);
-            }
-        }, 2000); // <-- 2 ثانیه تاخیر
 
-        // --- این تابع زمانی اجرا می‌شود که کامپوننت بسته می‌شود ---
+    useEffect(() => {
+        // این تابع فقط زمانی اجرا می‌شود که کامپوننت بسته شود
         return () => {
-            clearTimeout(timerId); // اگر کامپوننت زودتر بسته شد، تایمر را پاک کن
-            console.log("🔇 [InCallManager] Stopping...");
+            console.log("🔇 [InCallManager] Component unmounting. Stopping...");
             InCallManager.setKeepScreenOn(false);
             InCallManager.stop();
         };
-    }, []); // <-- [] وابستگی خالی همچنان درست است
-    // ✅ [اصلاح اصلی ۱: ساده‌سازی onMessage]
-    // ما دیگر منتظر WEBVIEW_READY نیستیم.
+    }, []);
+
+
     const handleWebViewMessage = (event: WebViewMessageEvent) => {
         const messageData = event.nativeEvent.data;
         console.log("Received message from WebView:", messageData);
 
         try {
             const data = JSON.parse(messageData);
-
+            if (data.type === 'audio-ready') {
+                console.log("🔊 [InCallManager] 'audio-ready' received! Starting and forcing speaker.");
+                try {
+                    // حالت تماس را شروع می‌کند
+                    InCallManager.start({ media: 'audio' });
+                    // صدا را به زور روی بلندگو می‌اندازد
+                    InCallManager.setForceSpeakerphoneOn(true);
+                    // صفحه را روشن نگه می‌دارد
+                    InCallManager.setKeepScreenOn(true);
+                } catch (err: any) {
+                    console.error("InCallManager start error:", err.message);
+                }
+            }
             // فقط به پیام بستن گوش می‌ده"
             if (data.type === 'close-webview' || data.type === 'session-ended') {
                 onStop();
@@ -71,29 +67,8 @@ export const VoiceUI: React.FC<VoiceUIProps> = ({
             // نادیده گرفتن
         }
     };
-    useEffect(() => {
 
-        // این تابع "cleanup" (پاک‌سازی) است
-        // این کد دقیقاً زمانی اجرا می‌شود که کامپوننت VoiceUI بسته شود (unmount شود)
-        return () => {
-            console.log("Cleaning up VoiceUI audio session...");
-
-            // سیستم صوتی را به حالت "پخش" برگردان
-            // این کار قفل میکروفون را آزاد می‌کند
-            Audio.setAudioModeAsync({
-                allowsRecordingIOS: false,
-                playsInSilentModeIOS: true,
-                // --- Android ---
-                interruptionModeAndroid: 1, // 1 = InterruptionModeAndroid.DuckOthers (حالت پخش)
-                shouldDuckAndroid: false,
-                staysActiveInBackground: false,
-                playThroughEarpieceAndroid: false,
-            }).catch(err => {
-                console.error("Failed to reset audio mode on VoiceUI cleanup:", err);
-            });
-        };
-    }, []);
-    const model = chatSettings.model || 'gpt-4o-realtime-preview';
+    const model = chatSettings.model || 'gpt-realtime-mini';
     const cacheBuster = `&v=${Date.now()}`;
     const webAppUrl = `https://www.rhynoai.ir/chat/realtime?model=${model}${cacheBuster}`;
     console.log(webAppUrl);
@@ -119,7 +94,7 @@ export const VoiceUI: React.FC<VoiceUIProps> = ({
                 style={styles.webView}
 
                 onMessage={handleWebViewMessage} // <-- شنونده ساده‌شده
-                injectedJavaScriptBeforeContentLoaded={injectedJavaScript}
+                injectedJavaScript={injectedJavaScript}
                 // @ts-ignore 
                 onPermissionRequest={(request: any) => {
                     console.log('WebView is requesting permission for:', request.permission);

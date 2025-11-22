@@ -79,6 +79,7 @@ export const messageItemStyles = StyleSheet.create({
     messageRow: {
         flexDirection: 'row',
         marginVertical: 2, // ✅ کاهش فاصله عمودی
+        width: '100%',
     },
 
 
@@ -118,6 +119,6 @@ export const messageItemStyles = StyleSheet.create({
         backgroundColor: 'transparent', // ✅ رنگ توسط گرادیانت تامین می‌شود
     },
     botMessage: {
-        backgroundColor: '#000000ff', // ✅ کمی روشن‌تر شد
+        backgroundColor: '#1C1C1E', // ✅ کمی روشن‌تر شد
     },
 });

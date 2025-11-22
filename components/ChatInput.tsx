@@ -14,6 +14,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { DocumentPickerAsset } from 'expo-document-picker';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 
 type RecordingStatus = 'idle' | 'preparing' | 'recording' | 'stopped';
@@ -229,15 +230,24 @@ export default function ChatInput({
 
                 {canSend ? (
                     // --- حالت ارسال ---
-                    <TouchableOpacity
-                        style={[styles.iconButton, styles.sendButton]}
-                        onPress={handleSend}
+                    <Animated.View
+                        entering={FadeIn.duration(150)}
+                        exiting={FadeOut.duration(150)}
                     >
-                        <Icon name="arrow-up" size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.iconButton, styles.sendButton]}
+                            onPress={handleSend}
+                        >
+                            <Icon name="arrow-up" size={24} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </Animated.View>
                 ) : (
                     // --- حالت آماده (صدا و GPTs) ---
-                    <View style={styles.actionButtonsContainer}>
+                    <Animated.View
+                        style={styles.actionButtonsContainer}
+                        entering={FadeIn.duration(150)}
+                        exiting={FadeOut.duration(150)}
+                    >
                         {isLoadingFiles || isPreparingVoice ? (
                             <ActivityIndicator size="small" color="#999" style={{ paddingHorizontal: 10 }} />
                         ) : isActuallyRecording ? (
@@ -250,6 +260,7 @@ export default function ChatInput({
                             </TouchableOpacity>
                         ) : (
                             // --- دکمه‌های عادی صدا و GPTs ---
+
                             <>
                                 <TouchableOpacity
                                     style={styles.iconButton}
@@ -259,7 +270,6 @@ export default function ChatInput({
                                     <Icon name="mic-outline" size={30} color="#999" />
                                 </TouchableOpacity>
 
-                                {/* ✅✅✅ [اصلاح UI] آیکون مدل‌ها (GPTs) ✅✅✅ */}
                                 <TouchableOpacity
                                     style={styles.iconButton}
                                     onPress={onGPTsPress}
@@ -268,13 +278,13 @@ export default function ChatInput({
                                 </TouchableOpacity>
                             </>
                         )}
-                    </View>
+                    </Animated.View>
                 )}
             </View>
         </KeyboardAvoidingView>
     );
 }
-
+const FONT_REGULAR = 'Vazirmatn-Medium';
 // ✅✅✅ [اصلاح UI] استایل‌ها برای تراز عمودی بهتر ✅✅✅
 const styles = StyleSheet.create({
     keyboardAvoidingContainer: {
@@ -327,6 +337,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingVertical: Platform.OS === 'ios' ? 12 : 10, // ✅ پدینگ عمودی متوازن
         lineHeight: 22,
+        fontFamily: FONT_REGULAR,
     },
 
     // --- استایل‌های ضمیمه ---

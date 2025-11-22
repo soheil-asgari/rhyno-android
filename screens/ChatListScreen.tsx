@@ -19,7 +19,7 @@ import { Session, User } from '@supabase/supabase-js'; // ✅ ایمپورت ت�
 import { useChat } from '../context/ChatContext';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { CommonActions } from '@react-navigation/native';
-import { useAndroidBackHandler } from './Navigation';
+import { useAndroidBackHandler } from '../hooks/useAndroidBackHandler';
 
 // ✅ تعریف تایپ برای یک آیتم چت از دیتابیس (بر اساس جدول chats شما)
 interface Chat {

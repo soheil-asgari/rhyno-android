@@ -45,8 +45,8 @@ export const styles = StyleSheet.create({
         paddingTop: 40, // ✅ کمی فاصله از بالا
     },
     welcomeLogo: {
-        width: 150,
-        height: 150,
+        width: 120,
+        height: 120,
         borderRadius: 16, // (اختیاری)
         marginBottom: 24,
     },
